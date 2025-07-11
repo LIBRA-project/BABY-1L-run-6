@@ -231,6 +231,7 @@ for generator in general_data["generators"]:
 
 # check if neutron rate is provided in processed_data.json
 processed_data_file = Path("../../data/processed_data.json")
+neutron_rate = None
 if processed_data_file.exists():
     with open(processed_data_file, "r") as f:
         processed_data = json.load(f)
@@ -245,7 +246,7 @@ if processed_data_file.exists():
             print(
                 f"Using neutron rate from processed_data.json: {neutron_rate} ± {neutron_rate_uncertainty}"
             )
-else:
+if neutron_rate is None:
     neutron_rate = 1.3e09 * ureg.neutron * ureg.s**-1 # based on manufacturer test data for generator settings
     neutron_rate_uncertainty = 4.9e06 * ureg.neutron * ureg.s**-1
     print(
