@@ -9,6 +9,12 @@ from temp import (
     background_dir,
 )
 
+from libra_toolbox.neutron_detection.activation_foils.compass import (
+    Measurement,
+    CheckSourceMeasurement,
+    SampleMeasurement,
+)
+
 
 def download_and_extract_foil_data(extracted_directory: Path, output_file: Path):
 

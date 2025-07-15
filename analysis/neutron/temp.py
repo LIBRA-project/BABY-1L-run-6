@@ -15,7 +15,7 @@ from libra_toolbox.neutron_detection.activation_foils.compass import (
     CheckSourceMeasurement,
     SampleMeasurement,
 )
-from datetime import date
+from datetime import date, datetime
 import json
 
 
@@ -167,3 +167,29 @@ check_source_measurements = {
 }
 
 background_dir = measurement_directory / "Background_20250602_count1/UNFILTERED"
+
+
+from zoneinfo import ZoneInfo
+
+with open("../../data/general.json", "r") as f:
+    general_data = json.load(f)
+irradiations = []
+for generator in general_data["generators"]:
+    if generator["enabled"] is False:
+        continue
+    for i, irradiation_period in enumerate(generator["periods"]):
+        if i == 0:
+            overall_start_time = datetime.strptime(
+                irradiation_period["start"], "%m/%d/%Y %H:%M"
+            )
+        start_time = datetime.strptime(irradiation_period["start"], "%m/%d/%Y %H:%M")
+        end_time = datetime.strptime(irradiation_period["end"], "%m/%d/%Y %H:%M")
+        irradiations.append(
+            {
+                "t_on": (start_time - overall_start_time).total_seconds(),
+                "t_off": (end_time - overall_start_time).total_seconds(),
+            }
+        )
+time_generator_off = end_time
+time_generator_off = time_generator_off.replace(tzinfo=ZoneInfo("America/New_York"))
+print(irradiations)
