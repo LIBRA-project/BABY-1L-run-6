@@ -24,13 +24,10 @@ from zoneinfo import ZoneInfo
 output_path = Path("../../data/neutron_detection/")
 activation_foil_path = output_path / "activation_foils"
 
-def get_raw_checksource_measurements(data_url, measurement_directory):
+def get_raw_checksource_measurements(measurement_directory: str):
     zip_filepath = output_path / "foil_data.zip"
     extracted_path = activation_foil_path
     measurement_directory_path = extracted_path / measurement_directory
-
-    from download_raw_foil_data import download_and_extract_foil_data
-    download_and_extract_foil_data(data_url, extracted_path, zip_filepath)
 
     uCi_to_Bq = 3.7e4
 
@@ -96,39 +93,42 @@ def get_raw_checksource_measurements(data_url, measurement_directory):
     check_source_measurements, background_meas = read_checksources_from_directory(
         check_source_measurements, background_dir
         )
-    return check_source_measurements, background_meas, background_dir
+    return check_source_measurements, background_meas
 
 
-def get_raw_foil_measurements(measurement_directory, background_dir):
+def get_raw_foil_measurements(measurement_directory):
     measurement_directory_path = activation_foil_path / measurement_directory
 
     niobium_foil, nb_distance_to_source = get_foil("Nb")
     zirconium_foil, zr_distance_to_source = get_foil("Zr")
 
     foil_measurements = {
-        niobium_foil: {
+        niobium_foil.name: {
             "measurement_paths": {
                 1: measurement_directory_path
                     / "Niobium3_20250601_1358_count1/UNFILTERED",
                 2: measurement_directory_path
                     / "Niobium3_20250602_1123_count2/UNFILTERED"
             },
+            "foil": niobium_foil,
             "distance_to_source": nb_distance_to_source
         },
-        zirconium_foil: {
+        zirconium_foil.name: {
             "measurement_paths": {
                 1: measurement_directory_path
                     / "Niobium3_20250601_1358_count1/UNFILTERED",
                 2: measurement_directory_path
                     / "Niobium3_20250602_1123_count2/UNFILTERED"
             },
+            "foil": zirconium_foil,
             "distance_to_source": zr_distance_to_source
         }
     }
 
-    read_foil_measurements_from_dir(foil_measurements, background_dir)
+    foil_measurements = read_foil_measurements_from_dir(foil_measurements)
+    return foil_measurements
 
-    
+
     
 
 def read_checksources_from_directory(
@@ -156,21 +156,23 @@ def read_foil_measurements_from_dir(
     foil_measurements: dict
 ):
 
-    for foil in foil_measurements.keys():
-        foil_measurements[foil]["measurements"] = {}
-        for count_num, measurement_path in foil_measurements[foil]["measurement_paths"].items():
-            measurement_name = f"{foil.name}_count{count_num}"
+    for foil_name in foil_measurements.keys():
+        foil_measurements[foil_name]["measurements"] = {}
+        foil = foil_measurements[foil_name]["foil"]
+        for count_num, measurement_path in foil_measurements[foil_name]["measurement_paths"].items():
+            measurement_name = f"{foil_name} Count {count_num}"
             print(f"Processing {measurement_name}...")
             measurement = SampleMeasurement.from_directory(
                 source_dir=measurement_path,
                 name=measurement_name
             )
             measurement.foil = foil
-            foil_measurements[foil]["measurements"][count_num] = measurement
+            foil_measurements[foil_name]["measurements"][count_num] = measurement
 
     return foil_measurements
 
 
+# Get the irradiation schedule
 
 with open("../../data/general.json", "r") as f:
     general_data = json.load(f)
@@ -193,7 +195,8 @@ for generator in general_data["generators"]:
         )
 time_generator_off = end_time
 time_generator_off = time_generator_off.replace(tzinfo=ZoneInfo("America/New_York"))
-print(irradiations)
+
+
 
 def get_foil(foil_element_symbol, foil_designator=None):
     """Get information about a specific foil from the general data file.
@@ -279,3 +282,51 @@ def get_foil(foil_element_symbol, foil_designator=None):
     foil.mass_attenuation_coefficient = foil_mass_attenuation_coefficient
     print(f"Read in properties of {foil.name} foil")
     return foil, distance_to_source
+
+def calculate_neutron_rate_from_foil(foil_measurements, 
+                                     foil_name,
+                                     background_meas,
+                                     calibration_coeffs,
+                                     efficiency_coeffs,
+                                     search_width=330,
+                                     irradiations=irradiations,
+                                     time_generator_off=time_generator_off):
+    neutron_rates = {}
+    neutron_rate_errs = {}
+
+    for count_num, measurement in foil_measurements[foil_name]["measurements"].items():
+
+        neutron_rates[f"Count {count_num}"] = {}
+        neutron_rate_errs[f"Count {count_num}"] = {}
+
+        for detector in measurement.detectors:
+            ch = detector.channel_nb
+
+            gamma_emitted, gamma_emitted_err = measurement.get_gamma_emitted(
+                background_measurement=background_meas,
+                calibration_coeffs=calibration_coeffs[ch],
+                efficiency_coeffs=efficiency_coeffs[ch],
+                channel_nb=ch,
+                search_width=search_width)
+            
+            neutron_rate = measurement.get_neutron_rate(
+                channel_nb=ch,
+                photon_counts=gamma_emitted,
+                irradiations=irradiations,
+                distance=foil_measurements[foil_name]["distance_to_source"],
+                time_generator_off=time_generator_off,
+                branching_ratio=foil_measurements[foil_name]["foil"].reaction.product.intensity
+            )
+
+            neutron_rate_err = measurement.get_neutron_rate(
+                channel_nb=ch,
+                photon_counts=gamma_emitted_err,
+                irradiations=irradiations,
+                distance=foil_measurements[foil_name]["distance_to_source"],
+                time_generator_off=time_generator_off,
+                branching_ratio=foil_measurements[foil_name]["foil"].reaction.product.intensity
+            )
+            neutron_rates[f"count_{count_num}"][ch] = neutron_rate
+            neutron_rate_errs[f"count_{count_num}"][ch] = neutron_rate_err
+
+    return neutron_rates, neutron_rate_errs

@@ -3,7 +3,9 @@ import zipfile
 import requests
 
 
-def download_and_extract_foil_data(url: str, extracted_path: Path, output_filepath: Path):
+def download_and_extract_foil_data(url: str, extracted_path: Path):
+
+    output_filepath = extracted_path / "../foil_data.zip"
 
     if extracted_path.exists():
         print(f"Directory already exists: {extracted_path}")
