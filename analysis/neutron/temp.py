@@ -168,6 +168,30 @@ check_source_measurements = {
 
 background_dir = measurement_directory / "Background_20250602_count1/UNFILTERED"
 
+def read_measurement_from_directory(
+    check_source_measurements: dict, background_dir: Path
+):
+
+    measurements = {}
+
+    for name, values in check_source_measurements.items():
+        print(f"Processing {name}...")
+        meas = CheckSourceMeasurement.from_directory(values["directory"], name=name)
+        meas.check_source = values["check_source"]
+        measurements[name] = meas
+
+    print(f"Processing background...")
+    background_meas = Measurement.from_directory(
+        background_dir,
+        name="Background",
+        info_file_optional=True,
+    )
+    return measurements, background_meas
+
+
+check_source_measurements, background_meas = read_measurement_from_directory(
+    check_source_measurements, background_dir
+)
 
 from zoneinfo import ZoneInfo
 
