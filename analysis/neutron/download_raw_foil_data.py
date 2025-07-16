@@ -3,13 +3,12 @@ import zipfile
 import requests
 
 
-def download_and_extract_foil_data(extracted_directory: Path, output_file: Path):
+def download_and_extract_foil_data(url: str, extracted_path: Path, output_filepath: Path):
 
-    if extracted_directory.exists():
-        print(f"Directory already exists: {extracted_directory}")
+    if extracted_path.exists():
+        print(f"Directory already exists: {extracted_path}")
     else:
         # URL of the file
-        url = "https://zenodo.org/records/15794193/files/BABY_1L_Run6_250530.zip?download=1"
 
         # Download the file
         print(f"Downloading data from {url}...")
@@ -17,22 +16,22 @@ def download_and_extract_foil_data(extracted_directory: Path, output_file: Path)
         if response.status_code == 200:
             print("Download successful!")
             # Save the file to the specified directory
-            with open(output_file, "wb") as f:
+            with open(output_filepath, "wb") as f:
                 f.write(response.content)
-            print(f"File saved to: {output_file}")
+            print(f"File saved to: {output_filepath}")
         else:
             print(f"Failed to download file. HTTP Status Code: {response.status_code}")
 
         # Extract the zip file
 
         # Ensure the extraction directory exists
-        extracted_directory.mkdir(parents=True, exist_ok=True)
+        extracted_path.mkdir(parents=True, exist_ok=True)
 
         # Unzip the file
-        with zipfile.ZipFile(output_file, "r") as zip_ref:
-            zip_ref.extractall(extracted_directory)
-        print(f"Files extracted to: {extracted_directory}")
+        with zipfile.ZipFile(output_filepath, "r") as zip_ref:
+            zip_ref.extractall(extracted_path)
+        print(f"Files extracted to: {extracted_path}")
 
         # Delete the zip file after extraction
-        output_file.unlink(missing_ok=True)
+        output_filepath.unlink(missing_ok=True)
 
