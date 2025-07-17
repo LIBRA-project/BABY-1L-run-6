@@ -18,19 +18,23 @@ from libra_toolbox.neutron_detection.activation_foils.compass import (
 from datetime import date, datetime
 import json
 from zoneinfo import ZoneInfo
+from download_raw_foil_data import download_and_extract_foil_data
+import copy
 
+### CHANGE THIS FOR EVERY RUN
+measurement_directory = "BABY_1L_Run6_250530"
 
 # Path to save the extracted files
 output_path = Path("../../data/neutron_detection/")
-activation_foil_path = output_path / "activation_foils"
+activation_foil_path = output_path / "activation_foils"  
 
-def get_raw_checksource_measurements(measurement_directory: str):
-    zip_filepath = output_path / "foil_data.zip"
-    extracted_path = activation_foil_path
-    measurement_directory_path = extracted_path / measurement_directory
+measurement_directory_path = activation_foil_path / measurement_directory
+
+def build_check_source_dict():
 
     uCi_to_Bq = 3.7e4
 
+    ### CHANGE THIS FOR EVERY RUN
 
     co60_checksource = CheckSource(
         co60, activity_date=date(2014, 3, 19), activity=0.872 * uCi_to_Bq
@@ -44,44 +48,43 @@ def get_raw_checksource_measurements(measurement_directory: str):
     na22_checksource = CheckSource(
         na22, activity_date=date(2023, 9, 29), activity=9.98 * uCi_to_Bq
     )
-
     check_source_measurements = {
-        "Co60_1": {
+        "Co60 Count 1": {
             "directory": measurement_directory_path
             / "Co60_0_872uCi_2014Mar19_count1/UNFILTERED",
             "check_source": co60_checksource,
         },
-        "Co60_2": {
+        "Co60 Count 2": {
             "directory": measurement_directory_path
             / "Co60_0_872uCi_2014Mar19_count2/UNFILTERED",
             "check_source": co60_checksource,
         },
-        "Cs137_1": {
+        "Cs137 Count 1": {
             "directory": measurement_directory_path
             / "Cs137_9_38uCi_2023Sep29_count1/UNFILTERED",
             "check_source": cs137_checksource,
         },
-        "Cs137_2": {
+        "Cs137 Count 2": {
             "directory": measurement_directory_path
             / "Cs137_9_38uCi_2023Sep29_count2/UNFILTERED",
             "check_source": cs137_checksource,
         },
-        "Mn54_1": {
+        "Mn54 Count 1": {
             "directory": measurement_directory_path
             / "Mn54_6_27uCi_2016May2_count1/UNFILTERED",
             "check_source": mn54_checksource,
         },
-        "Mn54_2": {
+        "Mn54 Count 2": {
             "directory": measurement_directory_path 
             / "Mn54_6_27uCi_2016May2_count2/UNFILTERED",
             "check_source": mn54_checksource,
         },
-        "Na22_1": {
+        "Na22 Count 1": {
             "directory": measurement_directory_path 
             / "Na22_9_98uCi_2023Sep29_count1/UNFILTERED",
             "check_source": na22_checksource,
         },
-        "Na22_2": {
+        "Na22 Count 2": {
             "directory": measurement_directory_path 
             / "Na22_9_98uCi_2023Sep29_count2/UNFILTERED",
             "check_source": na22_checksource,
@@ -90,14 +93,11 @@ def get_raw_checksource_measurements(measurement_directory: str):
 
     background_dir = measurement_directory_path / "Background_20250602_count1/UNFILTERED"
 
-    check_source_measurements, background_meas = read_checksources_from_directory(
-        check_source_measurements, background_dir
-        )
-    return check_source_measurements, background_meas
+    return check_source_measurements, background_dir
 
+def build_foil_source_dict():
 
-def get_raw_foil_measurements(measurement_directory):
-    measurement_directory_path = activation_foil_path / measurement_directory
+    ### CHANGE THIS FOR EVERY RUN
 
     niobium_foil, nb_distance_to_source = get_foil("Nb")
     zirconium_foil, zr_distance_to_source = get_foil("Zr")
@@ -125,11 +125,54 @@ def get_raw_foil_measurements(measurement_directory):
         }
     }
 
-    foil_measurements = read_foil_measurements_from_dir(foil_measurements)
     return foil_measurements
 
+def get_data(download_from_raw=False, url=None):
+    check_source_dict, background_dir = build_check_source_dict()
+    foil_source_dict = build_foil_source_dict()
 
-    
+    if download_from_raw:
+        if url is None:
+            raise ValueError("Web URL not provided for downloading data.")
+        download_and_extract_foil_data(url, activation_foil_path)
+        # Process data
+        check_source_measurements, background_meas = read_checksources_from_directory(
+                                        check_source_dict, background_dir
+                                        )
+        foil_measurements = get_raw_foil_measurements(measurement_directory)
+    else:
+        measurements = Measurement.from_h5(activation_foil_path / "activation_data.h5")
+        foil_measurements = copy.deepcopy(foil_source_dict)
+        # Get list of foil measurement names
+        foil_measurement_names = []
+        for foil_name in foil_source_dict.keys():
+            for count_num in foil_source_dict[foil_name]["measurement_paths"]:
+                foil_measurement_names.append(f"{foil_name} Count {count_num}")
+
+            # Add empty measurements dictionary to foil_source_dict copy
+            foil_measurements[foil_name]["measurements"] = {}
+            
+        for measurement in measurements:
+            # check if measurement is a check source measurement
+            if measurement.name in check_source_dict.keys():
+                check_source_meas = CheckSourceMeasurement(measurement)
+                check_source_meas.check_source = check_source_dict[measurement.name]["check_source"]
+            elif measurement.name == "Background":
+                background_meas = measurement
+            elif measurement.name in  foil_measurement_names:
+                # Extract foil name and count number from measurement name
+                split_name = measurement.name.split(' ')
+                count_num = int(split_name[-1])
+                foil_name = split_name[:-2]
+
+                foil_meas = SampleMeasurement(measurement)
+                foil_meas.foil = foil_source_dict[foil_name]["foil"]
+                foil_measurements[foil_name]["measurements"][count_num] = foil_meas
+            else:
+                print(f"Extra measurement included in h5 file: {measurement.name}")
+        
+    return check_source_measurements, background_meas, foil_measurements
+
 
 def read_checksources_from_directory(
     check_source_measurements: dict, background_dir: Path
