@@ -116,9 +116,9 @@ def get_raw_foil_measurements(measurement_directory):
         zirconium_foil.name: {
             "measurement_paths": {
                 1: measurement_directory_path
-                    / "Niobium3_20250601_1358_count1/UNFILTERED",
+                    / "Zirconium1_20250530_1512_count1/UNFILTERED",
                 2: measurement_directory_path
-                    / "Niobium3_20250602_1123_count2/UNFILTERED"
+                    / "Zirconium1_20250531_2115_count2/UNFILTERED"
             },
             "foil": zirconium_foil,
             "distance_to_source": zr_distance_to_source
@@ -197,6 +197,41 @@ time_generator_off = end_time
 time_generator_off = time_generator_off.replace(tzinfo=ZoneInfo("America/New_York"))
 
 
+def get_distance_to_source_from_dict(foil_dict: dict):
+    distance_to_source_dict = foil_dict["distance_to_source"]
+    if distance_to_source_dict["unit"] == "cm":
+        return distance_to_source_dict["value"]
+    else:
+        raise ValueError(
+            f"Unsupported unit for distance to source: {distance_to_source_dict['unit']}"
+        )
+    
+
+def get_mass_from_dict(foil_dict: dict):
+    if foil_dict["mass"]["unit"] == "g":
+        return foil_dict["mass"]["value"]
+    else:
+        raise ValueError(
+            f"Unsupported unit for mass: {foil_dict['mass']['unit']}"
+        )
+    
+
+def get_thickness_from_dict(foil_dict: dict):
+    inches_to_cm = 2.54
+    foil_thickness = foil_dict["thickness"]["value"]
+    if (
+        foil_dict["thickness"]["unit"] == "inch"
+        or foil_dict["thickness"]["unit"] == "in"
+    ):
+        foil_thickness *= inches_to_cm
+    elif foil_dict["thickness"]["unit"] == "cm":
+        pass  # already in cm
+    else:
+        raise ValueError(
+            f"Unsupported unit for thickness: {foil_dict['thickness']['unit']}"
+        )
+    return foil_thickness
+
 
 def get_foil(foil_element_symbol, foil_designator=None):
     """Get information about a specific foil from the general data file.
@@ -207,7 +242,6 @@ def get_foil(foil_element_symbol, foil_designator=None):
         ActivationFoil: An ActivationFoil object containing the foil's properties.
         distance_to_source (float): The distance from the foil to the neutron source in cm.
     """
-    inches_to_cm = 2.54
 
     with open("../../data/general.json", "r") as f:
         general_data = json.load(f)
@@ -219,34 +253,13 @@ def get_foil(foil_element_symbol, foil_designator=None):
                 # if no foil_designator is provided, or if it matches the foil's designator
                 if foil_designator is None or foil["designator"] == foil_designator:
                     # Get distance to generator
-                    distance_to_source_dict = foil["distance_to_source"]
-                    if distance_to_source_dict["unit"] == "cm":
-                        distance_to_source = distance_to_source_dict["value"]
-                    else:
-                        raise ValueError(
-                            f"Unsupported unit for distance to source: {distance_to_source_dict['unit']}"
-                        )
+                    distance_to_source = get_distance_to_source_from_dict(foil)
 
                     # Get mass
-                    foil_mass = foil["mass"]["value"]
-                    if foil["mass"]["unit"] != "g":
-                        raise ValueError(
-                            f"Unsupported unit for mass: {foil['mass']['unit']}"
-                        )
+                    foil_mass = get_mass_from_dict(foil)
 
                     # get foil thickness
-                    foil_thickness = foil["thickness"]["value"]
-                    if (
-                        foil["thickness"]["unit"] == "inch"
-                        or foil["thickness"]["unit"] == "in"
-                    ):
-                        foil_thickness *= inches_to_cm
-                    elif foil["thickness"]["unit"] == "cm":
-                        pass  # already in cm
-                    else:
-                        raise ValueError(
-                            f"Unsupported unit for thickness: {foil['thickness']['unit']}"
-                        )
+                    foil_thickness = get_thickness_from_dict(foil)
 
                     # Get foil name
                     foil_name = foil["designator"]
@@ -326,7 +339,7 @@ def calculate_neutron_rate_from_foil(foil_measurements,
                 time_generator_off=time_generator_off,
                 branching_ratio=foil_measurements[foil_name]["foil"].reaction.product.intensity
             )
-            neutron_rates[f"count_{count_num}"][ch] = neutron_rate
-            neutron_rate_errs[f"count_{count_num}"][ch] = neutron_rate_err
+            neutron_rates[f"Count {count_num}"][ch] = neutron_rate
+            neutron_rate_errs[f"Count {count_num}"][ch] = neutron_rate_err
 
     return neutron_rates, neutron_rate_errs
