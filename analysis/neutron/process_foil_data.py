@@ -139,10 +139,17 @@ def get_data(download_from_raw=False, url=None):
         check_source_measurements, background_meas = read_checksources_from_directory(
                                         check_source_dict, background_dir
                                         )
-        foil_measurements = get_raw_foil_measurements(measurement_directory)
+        foil_measurements = read_foil_measurements_from_dir(foil_source_dict)
+
+        # save spectra to h5 for future, faster use
+        print('Saving spectra to h5...')
+        save_measurements(check_source_measurements,
+                          background_meas,
+                          foil_measurements)
     else:
         measurements = Measurement.from_h5(activation_foil_path / "activation_data.h5")
         foil_measurements = copy.deepcopy(foil_source_dict)
+        check_source_measurements = {}
         # Get list of foil measurement names
         foil_measurement_names = []
         for foil_name in foil_source_dict.keys():
@@ -153,17 +160,19 @@ def get_data(download_from_raw=False, url=None):
             foil_measurements[foil_name]["measurements"] = {}
             
         for measurement in measurements:
+            print(f"Processing {measurement.name} from h5 file...")
             # check if measurement is a check source measurement
             if measurement.name in check_source_dict.keys():
                 check_source_meas = CheckSourceMeasurement(measurement)
                 check_source_meas.check_source = check_source_dict[measurement.name]["check_source"]
+                check_source_measurements[measurement.name] = check_source_meas
             elif measurement.name == "Background":
                 background_meas = measurement
             elif measurement.name in  foil_measurement_names:
                 # Extract foil name and count number from measurement name
                 split_name = measurement.name.split(' ')
                 count_num = int(split_name[-1])
-                foil_name = split_name[:-2]
+                foil_name = " ".join(split_name[:-2])
 
                 foil_meas = SampleMeasurement(measurement)
                 foil_meas.foil = foil_source_dict[foil_name]["foil"]
@@ -172,6 +181,30 @@ def get_data(download_from_raw=False, url=None):
                 print(f"Extra measurement included in h5 file: {measurement.name}")
         
     return check_source_measurements, background_meas, foil_measurements
+
+
+def save_measurements(check_source_measurements,
+                      background_meas,
+                      foil_measurements):
+    
+    measurements = []
+    for name, measurement in check_source_measurements.items():
+        measurements.append(measurement)
+    measurements.append(background_meas)
+    for foil_name in foil_measurements.keys():
+        for count_num in foil_measurements[foil_name]["measurements"].keys():
+            measurements.append(foil_measurements[foil_name]["measurements"][count_num])
+    
+    for i,measurement in enumerate(measurements):
+        if i==0:
+            mode = 'w'
+        else:
+            mode = 'a'
+        measurement.to_h5(
+            filename= activation_foil_path / "activation_data.h5",
+            mode=mode,
+            spectrum_only=True
+        )
 
 
 def read_checksources_from_directory(
