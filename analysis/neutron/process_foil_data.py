@@ -15,6 +15,7 @@ from libra_toolbox.neutron_detection.activation_foils.compass import (
     CheckSourceMeasurement,
     SampleMeasurement,
 )
+from libra_toolbox.tritium.model import ureg
 from datetime import date, datetime
 import json
 from zoneinfo import ZoneInfo
@@ -278,38 +279,23 @@ time_generator_off = time_generator_off.replace(tzinfo=ZoneInfo("America/New_Yor
 
 def get_distance_to_source_from_dict(foil_dict: dict):
     distance_to_source_dict = foil_dict["distance_to_source"]
-    if distance_to_source_dict["unit"] == "cm":
-        return distance_to_source_dict["value"]
-    else:
-        raise ValueError(
-            f"Unsupported unit for distance to source: {distance_to_source_dict['unit']}"
-        )
+    # unit from string with pint
+    unit = ureg.parse_units(distance_to_source_dict["unit"])
+    return (distance_to_source_dict["value"] * unit).to(ureg.cm).magnitude
     
 
 def get_mass_from_dict(foil_dict: dict):
-    if foil_dict["mass"]["unit"] == "g":
-        return foil_dict["mass"]["value"]
-    else:
-        raise ValueError(
-            f"Unsupported unit for mass: {foil_dict['mass']['unit']}"
-        )
+    foil_mass = foil_dict["mass"]["value"]
+    # unit from string with pint
+    unit = ureg.parse_units(foil_dict["mass"]["unit"])
+    return (foil_mass * unit).to(ureg.g).magnitude
     
 
 def get_thickness_from_dict(foil_dict: dict):
-    inches_to_cm = 2.54
     foil_thickness = foil_dict["thickness"]["value"]
-    if (
-        foil_dict["thickness"]["unit"] == "inch"
-        or foil_dict["thickness"]["unit"] == "in"
-    ):
-        foil_thickness *= inches_to_cm
-    elif foil_dict["thickness"]["unit"] == "cm":
-        pass  # already in cm
-    else:
-        raise ValueError(
-            f"Unsupported unit for thickness: {foil_dict['thickness']['unit']}"
-        )
-    return foil_thickness
+    # unit from string with pint
+    unit = ureg.parse_units(foil_dict["thickness"]["unit"])
+    return (foil_thickness * unit).to(ureg.cm).magnitude
 
 
 def get_foil(foil_element_symbol, foil_designator=None):
