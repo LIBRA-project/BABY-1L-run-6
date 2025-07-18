@@ -91,31 +91,31 @@
                 {
                     "position": "Above nGen tip",
                     "material": "Nb",
-                    "designator": null,
+                    "designator": "Nb Packet #3",
                     "irradiation_date": "5/30/2025",
-                    "number_of_foils": null,
+                    "number_of_foils": 2,
                     "distance_to_source": {
                         "value": 5.5,
                         "unit": "cm",
                         "note": "To generator axis at target plane"
                     },
                     "mass": {
-                        "value": null,
+                        "value": 0.5359,
                         "unit": "g"
                     },
                     "mass_err": {
-                        "value": null,
+                        "value": 0.0007,
                         "unit": "g"
                     },
                     "thickness": {
-                        "value": null,
+                        "value": 0.02,
                         "unit": "inch"
                     }
                 },
                 {
                     "position": "Under nGen tip",
                     "material": "Zr",
-                    "designator": null,
+                    "designator": "Zr Packet #1",
                     "irradiation_date": "5/30/2025",
                     "number_of_foils": 8,
                     "distance_to_source": {
@@ -123,15 +123,15 @@
                         "unit": "cm"
                     },
                     "mass": {
-                        "value": null,
+                        "value": 0.9036,
                         "unit": "g"
                     },
                     "mass_err": {
-                        "value": null,
+                        "value": 0.0001,
                         "unit": "g"
                     },
                     "thickness": {
-                        "value": null,
+                        "value": 0.04,
                         "unit": "inch"
                     }
                 }
