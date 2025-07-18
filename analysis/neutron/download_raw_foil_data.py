@@ -5,7 +5,7 @@ import requests
 
 def download_and_extract_foil_data(url: str, extracted_path: Path):
 
-    output_filepath = extracted_path / "../foil_data.zip"
+    output_filepath = Path("../../data/neutron_detection/foil_data.zip")
 
     if extracted_path.exists():
         print(f"Directory already exists: {extracted_path}")
