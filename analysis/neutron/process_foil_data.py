@@ -163,7 +163,9 @@ def get_data(download_from_raw=False, url=None):
             print(f"Processing {measurement.name} from h5 file...")
             # check if measurement is a check source measurement
             if measurement.name in check_source_dict.keys():
-                check_source_meas = CheckSourceMeasurement(measurement)
+                # May want to change CheckSourceMeasurement in libra-toolbox to make this more seemless
+                check_source_meas = CheckSourceMeasurement(measurement.name)
+                check_source_meas.__dict__.update(measurement.__dict__)
                 check_source_meas.check_source = check_source_dict[measurement.name]["check_source"]
                 check_source_measurements[measurement.name] = check_source_meas
             elif measurement.name == "Background":
@@ -175,6 +177,7 @@ def get_data(download_from_raw=False, url=None):
                 foil_name = " ".join(split_name[:-2])
 
                 foil_meas = SampleMeasurement(measurement)
+                foil_meas.__dict__.update(measurement.__dict__)
                 foil_meas.foil = foil_source_dict[foil_name]["foil"]
                 foil_measurements[foil_name]["measurements"][count_num] = foil_meas
             else:
