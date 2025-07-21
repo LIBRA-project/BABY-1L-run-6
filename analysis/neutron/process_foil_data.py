@@ -22,7 +22,9 @@ from zoneinfo import ZoneInfo
 from download_raw_foil_data import download_and_extract_foil_data
 import copy
 
-### CHANGE THIS FOR EVERY RUN
+#####################################################################
+##################### CHANGE THIS FOR EVERY RUN #####################
+#####################################################################
 measurement_directory = "BABY_1L_Run6_250530"
 
 # Path to save the extracted files
@@ -31,106 +33,192 @@ activation_foil_path = output_path / "activation_foils"
 
 measurement_directory_path = activation_foil_path / measurement_directory
 
-def build_check_source_dict():
 
-    uCi_to_Bq = 3.7e4
+################ Check Source Calibration Information ###################
+uCi_to_Bq = 3.7e4
 
-    ### CHANGE THIS FOR EVERY RUN
+#####################################################################
+##################### CHANGE THIS FOR EVERY RUN #####################
+#####################################################################
 
-    co60_checksource = CheckSource(
-        co60, activity_date=date(2014, 3, 19), activity=0.872 * uCi_to_Bq
+co60_checksource = CheckSource(
+    co60, activity_date=date(2014, 3, 19), activity=0.872 * uCi_to_Bq
+)
+cs137_checksource = CheckSource(
+    cs137, activity_date=date(2023, 9, 29), activity=9.38 * uCi_to_Bq
+)
+mn54_checksource = CheckSource(
+    mn54, activity_date=date(2016, 5, 2), activity=6.27 * uCi_to_Bq
+)
+na22_checksource = CheckSource(
+    na22, activity_date=date(2023, 9, 29), activity=9.98 * uCi_to_Bq
+)
+check_source_dict = {
+    "Co60 Count 1": {
+        "directory": measurement_directory_path
+        / "Co60_0_872uCi_2014Mar19_count1/UNFILTERED",
+        "check_source": co60_checksource,
+    },
+    "Co60 Count 2": {
+        "directory": measurement_directory_path
+        / "Co60_0_872uCi_2014Mar19_count2/UNFILTERED",
+        "check_source": co60_checksource,
+    },
+    "Cs137 Count 1": {
+        "directory": measurement_directory_path
+        / "Cs137_9_38uCi_2023Sep29_count1/UNFILTERED",
+        "check_source": cs137_checksource,
+    },
+    "Cs137 Count 2": {
+        "directory": measurement_directory_path
+        / "Cs137_9_38uCi_2023Sep29_count2/UNFILTERED",
+        "check_source": cs137_checksource,
+    },
+    "Mn54 Count 1": {
+        "directory": measurement_directory_path
+        / "Mn54_6_27uCi_2016May2_count1/UNFILTERED",
+        "check_source": mn54_checksource,
+    },
+    "Mn54 Count 2": {
+        "directory": measurement_directory_path 
+        / "Mn54_6_27uCi_2016May2_count2/UNFILTERED",
+        "check_source": mn54_checksource,
+    },
+    "Na22 Count 1": {
+        "directory": measurement_directory_path 
+        / "Na22_9_98uCi_2023Sep29_count1/UNFILTERED",
+        "check_source": na22_checksource,
+    },
+    "Na22 Count 2": {
+        "directory": measurement_directory_path 
+        / "Na22_9_98uCi_2023Sep29_count2/UNFILTERED",
+        "check_source": na22_checksource,
+    },
+}
+
+background_dir = measurement_directory_path / "Background_20250602_count1/UNFILTERED"
+
+################ Foil Information ###################
+
+def get_distance_to_source_from_dict(foil_dict: dict):
+    distance_to_source_dict = foil_dict["distance_to_source"]
+    # unit from string with pint
+    unit = ureg.parse_units(distance_to_source_dict["unit"])
+    return (distance_to_source_dict["value"] * unit).to(ureg.cm).magnitude
+    
+
+def get_mass_from_dict(foil_dict: dict):
+    foil_mass = foil_dict["mass"]["value"]
+    # unit from string with pint
+    unit = ureg.parse_units(foil_dict["mass"]["unit"])
+    return (foil_mass * unit).to(ureg.g).magnitude
+    
+
+def get_thickness_from_dict(foil_dict: dict):
+    foil_thickness = foil_dict["thickness"]["value"]
+    # unit from string with pint
+    unit = ureg.parse_units(foil_dict["thickness"]["unit"])
+    return (foil_thickness * unit).to(ureg.cm).magnitude
+
+
+def get_foil(foil_element_symbol, foil_designator=None):
+    """Get information about a specific foil from the general data file.
+    Args:
+        foil_element_symbol (str): The chemical symbol of the foil element (e.g., "Zr" for Zirconium).
+        foil_designator (str, optional): The designator of the foil (e.g., "Nb Packet #1")
+    Returns:
+        ActivationFoil: An ActivationFoil object containing the foil's properties.
+        distance_to_source (float): The distance from the foil to the neutron source in cm.
+    """
+
+    with open("../../data/general.json", "r") as f:
+        general_data = json.load(f)
+        foils = general_data["neutron_detection"]["foils"]["materials"]
+        foil_of_specified_element_count = 0
+        for foil in foils:
+            if foil["material"] == foil_element_symbol:
+                foil_of_specified_element_count += 1
+                # if no foil_designator is provided, or if it matches the foil's designator
+                if foil_designator is None or foil["designator"] == foil_designator:
+                    # Get distance to generator
+                    distance_to_source = get_distance_to_source_from_dict(foil)
+
+                    # Get mass
+                    foil_mass = get_mass_from_dict(foil)
+
+                    # get foil thickness
+                    foil_thickness = get_thickness_from_dict(foil)
+
+                    # Get foil name
+                    foil_name = foil["designator"]
+                    if foil_name is None:
+                        foil_name = foil_element_symbol
+
+    if foil_of_specified_element_count == 0:
+        raise ValueError(
+            f"No foils found for element {foil_element_symbol} with designator {foil_designator}"
+        )
+    elif foil_of_specified_element_count > 1:
+        print(
+            f"Warning: Multiple foils found for element {foil_element_symbol} with designator {foil_designator}. Using the last one found."
+        )
+
+    if foil_element_symbol == "Zr":
+        foil_density = 6.505
+        foil_mass_attenuation_coefficient = 0.08590  # cm^2/g at 1 MeV
+        foil_reaction = zr90_n2n
+    elif foil_element_symbol == "Nb":
+        foil_density = 8.582
+        foil_mass_attenuation_coefficient = 0.06120  # cm^2/g at 1 MeV
+        foil_reaction = nb93_n2n
+    else:
+        raise ValueError(f"Unsupported foil element symbol: {foil_element_symbol}")
+    foil = ActivationFoil(
+        reaction=foil_reaction,
+        mass=foil_mass,
+        name=foil_name,
+        density=foil_density,
+        thickness=foil_thickness,  # in cm
     )
-    cs137_checksource = CheckSource(
-        cs137, activity_date=date(2023, 9, 29), activity=9.38 * uCi_to_Bq
-    )
-    mn54_checksource = CheckSource(
-        mn54, activity_date=date(2016, 5, 2), activity=6.27 * uCi_to_Bq
-    )
-    na22_checksource = CheckSource(
-        na22, activity_date=date(2023, 9, 29), activity=9.98 * uCi_to_Bq
-    )
-    check_source_measurements = {
-        "Co60 Count 1": {
-            "directory": measurement_directory_path
-            / "Co60_0_872uCi_2014Mar19_count1/UNFILTERED",
-            "check_source": co60_checksource,
+    foil.mass_attenuation_coefficient = foil_mass_attenuation_coefficient
+    print(f"Read in properties of {foil.name} foil")
+    return foil, distance_to_source
+
+#####################################################################
+##################### CHANGE THIS FOR EVERY RUN #####################
+#####################################################################
+
+niobium_foil, nb_distance_to_source = get_foil("Nb")
+zirconium_foil, zr_distance_to_source = get_foil("Zr")
+
+foil_source_dict = {
+    niobium_foil.name: {
+        "measurement_paths": {
+            1: measurement_directory_path
+                / "Niobium3_20250601_1358_count1/UNFILTERED",
+            2: measurement_directory_path
+                / "Niobium3_20250602_1123_count2/UNFILTERED"
         },
-        "Co60 Count 2": {
-            "directory": measurement_directory_path
-            / "Co60_0_872uCi_2014Mar19_count2/UNFILTERED",
-            "check_source": co60_checksource,
+        "foil": niobium_foil,
+        "distance_to_source": nb_distance_to_source
+    },
+    zirconium_foil.name: {
+        "measurement_paths": {
+            1: measurement_directory_path
+                / "Zirconium1_20250530_1512_count1/UNFILTERED",
+            2: measurement_directory_path
+                / "Zirconium1_20250531_2115_count2/UNFILTERED"
         },
-        "Cs137 Count 1": {
-            "directory": measurement_directory_path
-            / "Cs137_9_38uCi_2023Sep29_count1/UNFILTERED",
-            "check_source": cs137_checksource,
-        },
-        "Cs137 Count 2": {
-            "directory": measurement_directory_path
-            / "Cs137_9_38uCi_2023Sep29_count2/UNFILTERED",
-            "check_source": cs137_checksource,
-        },
-        "Mn54 Count 1": {
-            "directory": measurement_directory_path
-            / "Mn54_6_27uCi_2016May2_count1/UNFILTERED",
-            "check_source": mn54_checksource,
-        },
-        "Mn54 Count 2": {
-            "directory": measurement_directory_path 
-            / "Mn54_6_27uCi_2016May2_count2/UNFILTERED",
-            "check_source": mn54_checksource,
-        },
-        "Na22 Count 1": {
-            "directory": measurement_directory_path 
-            / "Na22_9_98uCi_2023Sep29_count1/UNFILTERED",
-            "check_source": na22_checksource,
-        },
-        "Na22 Count 2": {
-            "directory": measurement_directory_path 
-            / "Na22_9_98uCi_2023Sep29_count2/UNFILTERED",
-            "check_source": na22_checksource,
-        },
+        "foil": zirconium_foil,
+        "distance_to_source": zr_distance_to_source
     }
+}
 
-    background_dir = measurement_directory_path / "Background_20250602_count1/UNFILTERED"
 
-    return check_source_measurements, background_dir
-
-def build_foil_source_dict():
-
-    ### CHANGE THIS FOR EVERY RUN
-
-    niobium_foil, nb_distance_to_source = get_foil("Nb")
-    zirconium_foil, zr_distance_to_source = get_foil("Zr")
-
-    foil_measurements = {
-        niobium_foil.name: {
-            "measurement_paths": {
-                1: measurement_directory_path
-                    / "Niobium3_20250601_1358_count1/UNFILTERED",
-                2: measurement_directory_path
-                    / "Niobium3_20250602_1123_count2/UNFILTERED"
-            },
-            "foil": niobium_foil,
-            "distance_to_source": nb_distance_to_source
-        },
-        zirconium_foil.name: {
-            "measurement_paths": {
-                1: measurement_directory_path
-                    / "Zirconium1_20250530_1512_count1/UNFILTERED",
-                2: measurement_directory_path
-                    / "Zirconium1_20250531_2115_count2/UNFILTERED"
-            },
-            "foil": zirconium_foil,
-            "distance_to_source": zr_distance_to_source
-        }
-    }
-
-    return foil_measurements
-
-def get_data(download_from_raw=False, url=None):
-    check_source_dict, background_dir = build_check_source_dict()
-    foil_source_dict = build_foil_source_dict()
+def get_data(download_from_raw=False, url=None,
+             check_source_dict=check_source_dict,
+             background_dir=background_dir,
+             foil_source_dict=foil_source_dict):
 
     if download_from_raw:
         if url is None:
@@ -277,89 +365,6 @@ time_generator_off = end_time
 time_generator_off = time_generator_off.replace(tzinfo=ZoneInfo("America/New_York"))
 
 
-def get_distance_to_source_from_dict(foil_dict: dict):
-    distance_to_source_dict = foil_dict["distance_to_source"]
-    # unit from string with pint
-    unit = ureg.parse_units(distance_to_source_dict["unit"])
-    return (distance_to_source_dict["value"] * unit).to(ureg.cm).magnitude
-    
-
-def get_mass_from_dict(foil_dict: dict):
-    foil_mass = foil_dict["mass"]["value"]
-    # unit from string with pint
-    unit = ureg.parse_units(foil_dict["mass"]["unit"])
-    return (foil_mass * unit).to(ureg.g).magnitude
-    
-
-def get_thickness_from_dict(foil_dict: dict):
-    foil_thickness = foil_dict["thickness"]["value"]
-    # unit from string with pint
-    unit = ureg.parse_units(foil_dict["thickness"]["unit"])
-    return (foil_thickness * unit).to(ureg.cm).magnitude
-
-
-def get_foil(foil_element_symbol, foil_designator=None):
-    """Get information about a specific foil from the general data file.
-    Args:
-        foil_element_symbol (str): The chemical symbol of the foil element (e.g., "Zr" for Zirconium).
-        foil_designator (str, optional): The designator of the foil (e.g., "Nb Packet #1")
-    Returns:
-        ActivationFoil: An ActivationFoil object containing the foil's properties.
-        distance_to_source (float): The distance from the foil to the neutron source in cm.
-    """
-
-    with open("../../data/general.json", "r") as f:
-        general_data = json.load(f)
-        foils = general_data["neutron_detection"]["foils"]["materials"]
-        foil_of_specified_element_count = 0
-        for foil in foils:
-            if foil["material"] == foil_element_symbol:
-                foil_of_specified_element_count += 1
-                # if no foil_designator is provided, or if it matches the foil's designator
-                if foil_designator is None or foil["designator"] == foil_designator:
-                    # Get distance to generator
-                    distance_to_source = get_distance_to_source_from_dict(foil)
-
-                    # Get mass
-                    foil_mass = get_mass_from_dict(foil)
-
-                    # get foil thickness
-                    foil_thickness = get_thickness_from_dict(foil)
-
-                    # Get foil name
-                    foil_name = foil["designator"]
-                    if foil_name is None:
-                        foil_name = foil_element_symbol
-
-    if foil_of_specified_element_count == 0:
-        raise ValueError(
-            f"No foils found for element {foil_element_symbol} with designator {foil_designator}"
-        )
-    elif foil_of_specified_element_count > 1:
-        print(
-            f"Warning: Multiple foils found for element {foil_element_symbol} with designator {foil_designator}. Using the last one found."
-        )
-
-    if foil_element_symbol == "Zr":
-        foil_density = 6.505
-        foil_mass_attenuation_coefficient = 0.08590  # cm^2/g at 1 MeV
-        foil_reaction = zr90_n2n
-    elif foil_element_symbol == "Nb":
-        foil_density = 8.582
-        foil_mass_attenuation_coefficient = 0.06120  # cm^2/g at 1 MeV
-        foil_reaction = nb93_n2n
-    else:
-        raise ValueError(f"Unsupported foil element symbol: {foil_element_symbol}")
-    foil = ActivationFoil(
-        reaction=foil_reaction,
-        mass=foil_mass,
-        name=foil_name,
-        density=foil_density,
-        thickness=foil_thickness,  # in cm
-    )
-    foil.mass_attenuation_coefficient = foil_mass_attenuation_coefficient
-    print(f"Read in properties of {foil.name} foil")
-    return foil, distance_to_source
 
 def calculate_neutron_rate_from_foil(foil_measurements, 
                                      foil_name,
