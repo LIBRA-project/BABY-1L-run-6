@@ -279,10 +279,10 @@ def save_measurements(check_source_measurements,
                       background_meas,
                       foil_measurements):
     
-    measurements = []
-    for name, measurement in check_source_measurements.items():
-        measurements.append(measurement)
+    measurements = list(check_source_measurements.values())
+    # Add background measurement to the list
     measurements.append(background_meas)
+    # Add foil measurements to the list
     for foil_name in foil_measurements.keys():
         for count_num in foil_measurements[foil_name]["measurements"].keys():
             measurements.append(foil_measurements[foil_name]["measurements"][count_num])
