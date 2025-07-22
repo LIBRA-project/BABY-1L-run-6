@@ -25,78 +25,76 @@ import copy
 #####################################################################
 ##################### CHANGE THIS FOR EVERY RUN #####################
 #####################################################################
-measurement_directory = "BABY_1L_Run6_250530"
 
 # Path to save the extracted files
 output_path = Path("../../data/neutron_detection/")
 activation_foil_path = output_path / "activation_foils"  
 
-measurement_directory_path = activation_foil_path / measurement_directory
-
 
 ################ Check Source Calibration Information ###################
-uCi_to_Bq = 3.7e4
 
-#####################################################################
-##################### CHANGE THIS FOR EVERY RUN #####################
-#####################################################################
 
-co60_checksource = CheckSource(
-    co60, activity_date=date(2014, 3, 19), activity=0.872 * uCi_to_Bq
-)
-cs137_checksource = CheckSource(
-    cs137, activity_date=date(2023, 9, 29), activity=9.38 * uCi_to_Bq
-)
-mn54_checksource = CheckSource(
-    mn54, activity_date=date(2016, 5, 2), activity=6.27 * uCi_to_Bq
-)
-na22_checksource = CheckSource(
-    na22, activity_date=date(2023, 9, 29), activity=9.98 * uCi_to_Bq
-)
-check_source_dict = {
-    "Co60 Count 1": {
-        "directory": measurement_directory_path
-        / "Co60_0_872uCi_2014Mar19_count1/UNFILTERED",
-        "check_source": co60_checksource,
-    },
-    "Co60 Count 2": {
-        "directory": measurement_directory_path
-        / "Co60_0_872uCi_2014Mar19_count2/UNFILTERED",
-        "check_source": co60_checksource,
-    },
-    "Cs137 Count 1": {
-        "directory": measurement_directory_path
-        / "Cs137_9_38uCi_2023Sep29_count1/UNFILTERED",
-        "check_source": cs137_checksource,
-    },
-    "Cs137 Count 2": {
-        "directory": measurement_directory_path
-        / "Cs137_9_38uCi_2023Sep29_count2/UNFILTERED",
-        "check_source": cs137_checksource,
-    },
-    "Mn54 Count 1": {
-        "directory": measurement_directory_path
-        / "Mn54_6_27uCi_2016May2_count1/UNFILTERED",
-        "check_source": mn54_checksource,
-    },
-    "Mn54 Count 2": {
-        "directory": measurement_directory_path 
-        / "Mn54_6_27uCi_2016May2_count2/UNFILTERED",
-        "check_source": mn54_checksource,
-    },
-    "Na22 Count 1": {
-        "directory": measurement_directory_path 
-        / "Na22_9_98uCi_2023Sep29_count1/UNFILTERED",
-        "check_source": na22_checksource,
-    },
-    "Na22 Count 2": {
-        "directory": measurement_directory_path 
-        / "Na22_9_98uCi_2023Sep29_count2/UNFILTERED",
-        "check_source": na22_checksource,
-    },
-}
+def build_check_source_from_dict(check_source_dict: dict):
+    """Build a CheckSource object from a dictionary."""
+    if check_source_dict["nuclide"].lower() == "co60":
+        nuclide = co60
+    elif check_source_dict["nuclide"].lower() == "cs137":
+        nuclide = cs137
+    elif check_source_dict["nuclide"].lower() == "mn54":
+        nuclide = mn54
+    elif check_source_dict["nuclide"].lower() == "na22":
+        nuclide = na22
+    elif (check_source_dict["energies"] is not None and
+          check_source_dict["intensities"] is not None and
+          check_source_dict["half_life"] is not None):
+        nuclide = compass.Nuclide(
+            energies=check_source_dict["energies"],
+            intensities=check_source_dict["intensities"],
+            half_life=(check_source_dict["half_life"]["value"] 
+                       * ureg.parse_units(check_source_dict["half_life"]["unit"])
+                       ).to(ureg.s).magnitude
+        )
+    else:
+        raise ValueError(
+            f"Unknown nuclide: {check_source_dict['nuclide']}. "
+            "Please provide a valid nuclide or energies/intensities/half_life."
+        )
+    activity_date = datetime.strptime(
+            check_source_dict["activity"]["date"], "%Y-%m-%d")
+    # Set the timezone to America/New_York
+    activity_date = activity_date.replace(tzinfo=ZoneInfo("America/New_York"))
+    check_source = CheckSource(
+        nuclide=nuclide,
+        activity=(check_source_dict["activity"]["value"] 
+                  * ureg.parse_units(check_source_dict["activity"]["unit"])
+                  ).to(ureg.Bq).magnitude,
+        activity_date=activity_date
+    )
+    return check_source
 
-background_dir = measurement_directory_path / "Background_20250602_count1/UNFILTERED"
+
+def read_check_source_data_from_json(json_data: dict, measurement_directory_path: Path):
+    """Read check source data from the general.json file."""
+    check_source_dict = {}
+    for check_source_name in json_data["check_sources"]:
+        check_source_data = json_data["check_sources"][check_source_name]
+        directory = measurement_directory_path / check_source_data["directory"]
+        check_source = build_check_source_from_dict(check_source_data)
+        check_source_dict[check_source_name] = {
+            "directory": directory,
+            "check_source": check_source,
+        }
+    return check_source_dict
+
+
+################# Background Information ###################
+
+def read_background_data_from_json(json_data: dict, measurement_directory_path: Path):
+    """Read background data from the general.json file."""
+    background_dir = measurement_directory_path / json_data["background_directory"]
+    return background_dir
+
+
 
 ################ Foil Information ###################
 
@@ -184,45 +182,53 @@ def get_foil(foil_element_symbol, foil_designator=None):
     print(f"Read in properties of {foil.name} foil")
     return foil, distance_to_source
 
-#####################################################################
-##################### CHANGE THIS FOR EVERY RUN #####################
-#####################################################################
 
-niobium_foil, nb_distance_to_source = get_foil("Nb")
-zirconium_foil, zr_distance_to_source = get_foil("Zr")
+def get_foil_source_dict_from_json(json_data: dict, measurement_directory_path: Path):
+    """Read foil source data from the general.json file."""
+    foils = json_data["materials"]
+    foil_source_dict = {}
+    for foil_dict in foils:
+        foil_element_symbol = foil_dict["material"]
+        foil_designator = foil_dict.get("designator", None)
+        foil, distance_to_source = get_foil(foil_element_symbol, foil_designator)
+        measurement_paths = {}
+        for count_num, measurement_subdirectory in enumerate(foil_dict["measurement_directory"], start=1):
+            measurement_paths[count_num] = (
+                measurement_directory_path / measurement_subdirectory
+            )
+        # foil.name should be the same as the designator if it exists.
+        # Otherwise is set to the element symbol. 
+        foil_source_dict[foil.name] = {
+            "measurement_paths": measurement_paths,
+            "foil": foil,
+            "distance_to_source": distance_to_source,
+        }
+    return foil_source_dict
 
-foil_source_dict = {
-    niobium_foil.name: {
-        "measurement_paths": {
-            1: measurement_directory_path
-                / "Niobium3_20250601_1358_count1/UNFILTERED",
-            2: measurement_directory_path
-                / "Niobium3_20250602_1123_count2/UNFILTERED"
-        },
-        "foil": niobium_foil,
-        "distance_to_source": nb_distance_to_source
-    },
-    zirconium_foil.name: {
-        "measurement_paths": {
-            1: measurement_directory_path
-                / "Zirconium1_20250530_1512_count1/UNFILTERED",
-            2: measurement_directory_path
-                / "Zirconium1_20250531_2115_count2/UNFILTERED"
-        },
-        "foil": zirconium_foil,
-        "distance_to_source": zr_distance_to_source
-    }
-}
 
 
 def get_data(download_from_raw=False, url=None,
-             check_source_dict=check_source_dict,
-             background_dir=background_dir,
-             foil_source_dict=foil_source_dict):
+             check_source_dict=None,
+             background_dir=None,
+             foil_source_dict=None):
+    with open("../../data/general.json", "r") as f:
+        general_data = json.load(f)
+        json_data = general_data["neutron_detection"]["foils"]
+    # get measurement directory path
+    measurement_directory_path = activation_foil_path / json_data["data_directory"]
+
+    # Get the dictionaries for check sources, background, and foils
+    if check_source_dict is None:
+        check_source_dict = read_check_source_data_from_json(json_data, measurement_directory_path)
+    if background_dir is None:
+        background_dir = read_background_data_from_json(json_data, measurement_directory_path)
+    if foil_source_dict is None:
+        foil_source_dict = get_foil_source_dict_from_json(json_data, measurement_directory_path)
 
     if download_from_raw:
+        # Download and extract foil data if not already done
         if url is None:
-            raise ValueError("Web URL not provided for downloading data.")
+            url = json_data["data_url"]
         download_and_extract_foil_data(url, activation_foil_path)
         # Process data
         check_source_measurements, background_meas = read_checksources_from_directory(
@@ -236,6 +242,7 @@ def get_data(download_from_raw=False, url=None,
                           background_meas,
                           foil_measurements)
     else:
+        # Read measurements from h5 file
         measurements = Measurement.from_h5(activation_foil_path / "activation_data.h5")
         foil_measurements = copy.deepcopy(foil_source_dict)
         check_source_measurements = {}

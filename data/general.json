@@ -88,6 +88,7 @@
             "enabled": true,
             "position": "on generators, at target plane, facing top and bottom",
             "data_url": "https://zenodo.org/records/15794193/files/BABY_1L_Run6_250530.zip?download=1",
+            "data_directory": "BABY_1L_Run6_250530",
             "materials": [
                 {
                     "position": "Above nGen tip",
@@ -112,7 +113,7 @@
                         "value": 0.02,
                         "unit": "inch"
                     },
-                    "measurement_filepath":[
+                    "measurement_directory":[
                         "Niobium3_20250601_1358_count1/UNFILTERED",
                         "Niobium3_20250602_1123_count2/UNFILTERED"
                     ]  
@@ -145,6 +146,7 @@
                     ]
                 }
             ],
+            "background_directory": "Background_20250602_count1/UNFILTERED",
             "check_sources": {
                 "Co60 Count 1": {
                     "directory": "Co60_0_872uCi_2014Mar19_count1/UNFILTERED",
@@ -155,7 +157,11 @@
                         "date": "2014-03-19"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Co60 Count 2": {
                     "directory": "Co60_0_872uCi_2014Mar19_count2/UNFILTERED",
@@ -166,7 +172,11 @@
                         "date": "2014-03-19"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Cs137 Count 1": {
                     "directory": "Cs137_9_38uCi_2023Sep29_count1/UNFILTERED",
@@ -177,7 +187,11 @@
                         "date": "2023-09-29"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Cs137 Count 2": {
                     "directory": "Cs137_9_38uCi_2023Sep29_count2/UNFILTERED",
@@ -188,7 +202,11 @@
                         "date": "2023-09-29"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Mn54 Count 1": {
                     "directory": "Mn54_6_27uCi_2016May2_count1/UNFILTERED",
@@ -199,7 +217,11 @@
                         "date": "2016-05-02"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Mn54 Count 2": {
                     "directory": "Mn54_6_27uCi_2016May2_count2/UNFILTERED",
@@ -210,7 +232,11 @@
                         "date": "2016-05-02"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Na22 Count 1": {
                     "directory": "Na22_9_98uCi_2023Sep29_count1/UNFILTERED",
@@ -221,7 +247,11 @@
                         "date": "2023-09-29"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 },
                 "Na22 Count 2": {
                     "directory": "Na22_9_98uCi_2023Sep29_count2/UNFILTERED",
@@ -232,7 +262,11 @@
                         "date": "2023-09-29"
                     },
                     "energies": null,
-                    "intensities": null
+                    "intensities": null,
+                    "half_life": {
+                        "value": null,
+                        "unit": null
+                    }
                 }
             }
         },
