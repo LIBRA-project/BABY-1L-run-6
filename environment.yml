@@ -16,7 +16,7 @@ dependencies:
   - pint
   - pip
   - pip:
-      - git+https://github.com/libra-project/libra-toolbox@v0.8
+      - libra-toolbox==0.8
       - openmc_data_downloader
       - matplotlib-label-lines
       - h-transport-materials
