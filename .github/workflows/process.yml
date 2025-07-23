@@ -42,9 +42,7 @@ jobs:
       - name: Run tritium model
         shell: bash -l {0}
         working-directory: analysis/tritium
-        run: |
-          python tritium_model.py
-          jupyter-nbconvert --to notebook tritium_model.ipynb --execute
+        run: jupyter-nbconvert --to notebook tritium_model.ipynb --execute
 
       - name: Commit and Push Changes
         run: |
