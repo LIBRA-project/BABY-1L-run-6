@@ -210,7 +210,8 @@ def get_foil_source_dict_from_json(json_data: dict, measurement_directory_path: 
 def get_data(download_from_raw=False, url=None,
              check_source_dict=None,
              background_dir=None,
-             foil_source_dict=None):
+             foil_source_dict=None,
+             h5_filename="activation_data.h5"):
     with open("../../data/general.json", "r") as f:
         general_data = json.load(f)
         json_data = general_data["neutron_detection"]["foils"]
@@ -237,13 +238,13 @@ def get_data(download_from_raw=False, url=None,
         foil_measurements = read_foil_measurements_from_dir(foil_source_dict)
 
         # save spectra to h5 for future, faster use
-        print('Saving spectra to h5...')
         save_measurements(check_source_measurements,
                           background_meas,
-                          foil_measurements)
+                          foil_measurements,
+                          filepath=activation_foil_path / h5_filename)
     else:
         # Read measurements from h5 file
-        measurements = Measurement.from_h5(activation_foil_path / "activation_data.h5")
+        measurements = Measurement.from_h5(activation_foil_path / h5_filename)
         foil_measurements = copy.deepcopy(foil_source_dict)
         check_source_measurements = {}
         # Get list of foil measurement names
@@ -284,8 +285,12 @@ def get_data(download_from_raw=False, url=None,
 
 def save_measurements(check_source_measurements,
                       background_meas,
-                      foil_measurements):
-    
+                      foil_measurements,
+                      filepath=activation_foil_path / "activation_data.h5"):
+    """Save measurements to an h5 file."""
+    print(f"Saving measurements to {filepath}...")
+    # Ensure the directory exists
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     measurements = list(check_source_measurements.values())
     # Add background measurement to the list
     measurements.append(background_meas)
@@ -300,7 +305,7 @@ def save_measurements(check_source_measurements,
         else:
             mode = 'a'
         measurement.to_h5(
-            filename= activation_foil_path / "activation_data.h5",
+            filename= filepath,
             mode=mode,
             spectrum_only=True
         )
