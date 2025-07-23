@@ -27,8 +27,10 @@ jobs:
       - name: Run foil analysis
         shell: bash -l {0}
         working-directory: analysis/neutron
-        run: jupyter-nbconvert --to notebook foil_analysis.ipynb --execute
-
+        run: |
+          papermill foil_analysis.ipynb temp.ipynb -p download_from_raw False
+          jupyter-nbconvert --to notebook --execute temp.ipynb
+          
       - name: Run tritium model
         shell: bash -l {0}
         working-directory: analysis/tritium
