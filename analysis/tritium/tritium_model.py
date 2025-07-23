@@ -334,6 +334,10 @@ processed_data = {
         "value": baby_model.neutron_rate.magnitude,
         "unit": str(baby_model.neutron_rate.units),
     },
+    "neutron_rate_relative_uncertainty": {
+        "value": neutron_rate_relative_uncertainty.magnitude,
+        "unit": str(neutron_rate_relative_uncertainty.units),
+    },
     "measured_TBR": {
         "value": measured_TBR.magnitude,
         "unit": str(measured_TBR.units),
