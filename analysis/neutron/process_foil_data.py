@@ -21,6 +21,7 @@ import json
 from zoneinfo import ZoneInfo
 from download_raw_foil_data import download_and_extract_foil_data
 import copy
+import numpy as np
 
 #####################################################################
 ##################### CHANGE THIS FOR EVERY RUN #####################
@@ -119,6 +120,55 @@ def get_thickness_from_dict(foil_dict: dict):
     return (foil_thickness * unit).to(ureg.cm).magnitude
 
 
+def interpolate_mass_attenuation_coefficient(foil_element_symbol, energy):
+    """Interpolate the mass attenuation coefficient for 
+    a given foil element symbol and energy (keV)."""
+
+    # Data from Table 3 of https://dx.doi.org/10.18434/T4D01F
+    # data is in the form of [energy (MeV), mass attenuation coefficient (cm^2/g)]
+    if foil_element_symbol == "Zr":
+        data = [
+            [1.00000E-01,  9.658E-01],
+            [1.50000E-01,  3.790E-01], 
+            [2.00000E-01,  2.237E-01], 
+            [3.00000E-01,  1.318E-01], 
+            [4.00000E-01,  1.018E-01], 
+            [5.00000E-01,  8.693E-02], 
+            [6.00000E-01,  7.756E-02], 
+            [8.00000E-01,  6.571E-02], 
+            [1.00000E+00,  5.810E-02], 
+            [1.25000E+00,  5.150E-02], 
+            [1.50000E+00,  4.700E-02], 
+            [2.00000E+00,  4.146E-02]
+        ]
+    elif foil_element_symbol == "Nb":
+        data = [
+            [1.00000E-01,	1.037E+00],
+            [1.50000E-01,	4.023E-01],
+            [2.00000E-01,	2.344E-01],
+            [3.00000E-01,	1.357E-01],
+            [4.00000E-01,	1.040E-01],
+            [5.00000E-01,	8.831E-02],
+            [6.00000E-01,	7.858E-02],
+            [8.00000E-01,	6.642E-02],
+            [1.00000E+00,	5.866E-02],
+            [1.25000E+00,	5.196E-02],
+            [1.50000E+00,	4.741E-02],
+            [2.00000E+00,	4.185E-02]
+        ]
+    else:
+        raise ValueError(f"Unsupported foil element symbol: {foil_element_symbol}")
+
+    data = np.array(data)
+    # Interpolate the mass attenuation coefficient
+    mass_attenuation_coefficient = np.interp(
+        energy, 
+        data[:, 0] * 1e3,  # energy values converted to keV
+        data[:, 1]   # mass attenuation coefficient values
+    )
+    return mass_attenuation_coefficient  # in cm^2/g
+
+
 def get_foil(foil_element_symbol, foil_designator=None):
     """Get information about a specific foil from the general data file.
     Args:
@@ -162,15 +212,31 @@ def get_foil(foil_element_symbol, foil_designator=None):
         )
 
     if foil_element_symbol == "Zr":
+        # density in g/cm^
+        # Source: 
+        # Arblaster, John W. (2018). 
+        # Selected Values of the Crystallographic Properties of Elements.
+        #  Materials Park, Ohio: ASM International. ISBN 978-1-62708-155-9.
         foil_density = 6.505
-        foil_mass_attenuation_coefficient = 0.08590  # cm^2/g at 1 MeV
+
         foil_reaction = zr90_n2n
+
     elif foil_element_symbol == "Nb":
+        # density in g/cm^
+        # Source: 
+        # Arblaster, John W. (2018). 
+        # Selected Values of the Crystallographic Properties of Elements.
+        #  Materials Park, Ohio: ASM International. ISBN 978-1-62708-155-9.
         foil_density = 8.582
-        foil_mass_attenuation_coefficient = 0.06120  # cm^2/g at 1 MeV
+
         foil_reaction = nb93_n2n
+
     else:
         raise ValueError(f"Unsupported foil element symbol: {foil_element_symbol}")
+    
+    foil_mass_attenuation_coefficient = interpolate_mass_attenuation_coefficient(
+            foil_element_symbol, foil_reaction.product.energy)
+    
     foil = ActivationFoil(
         reaction=foil_reaction,
         mass=foil_mass,
