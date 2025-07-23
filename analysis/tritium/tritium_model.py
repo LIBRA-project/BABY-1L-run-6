@@ -88,7 +88,7 @@ def get_row_by_label(reader: LSCFileReader, label: str) -> dict:
 
 def substract_scalar_background(sample: LSCSample, background_bq: float) -> None:
     if sample.background_substracted:
-            raise ValueError("Background already substracted")
+        raise ValueError("Background already substracted")
     sample.activity -= background_bq * ureg.Bq
     if sample.activity.magnitude < 0:
         warnings.warn(
@@ -110,7 +110,9 @@ def build_background_curve_from_file(reader: LSCFileReader, blank_labels: list[s
         tSIE_values.append(tSIE)
         Bq_values.append(Bq)
 
-    interpolator = interp1d(tSIE_values, Bq_values, bounds_error=False, fill_value="extrapolate")
+    interpolator = interp1d(
+        tSIE_values, Bq_values, bounds_error=False, fill_value="extrapolate"
+    )
     return interpolator
 
 
@@ -177,9 +179,9 @@ assert len(np.unique(all_quench)) == 1
 for stream in run.streams:
     for sample in stream.samples:
         for lsc_vial in sample.samples:
-            assert (
-                lsc_vial.background_substracted
-            ), f"Background not substracted for {sample}"
+            assert lsc_vial.background_substracted, (
+                f"Background not substracted for {sample}"
+            )
 
 IV_stream = gas_streams["IV"]
 OV_stream = gas_streams["OV"]
@@ -240,18 +242,18 @@ if processed_data_file.exists():
             neutron_rate = processed_data["neutron_rate_used_in_model"]["value"] * ureg(
                 processed_data["neutron_rate_used_in_model"]["unit"]
             )
-            neutron_rate_uncertainty = processed_data["neutron_rate_used_in_model"]["error"]* ureg(
-                    processed_data["neutron_rate_used_in_model"]["unit"]
-                )
+            neutron_rate_uncertainty = processed_data["neutron_rate_used_in_model"][
+                "error"
+            ] * ureg(processed_data["neutron_rate_used_in_model"]["unit"])
             print(
                 f"Using neutron rate from processed_data.json: {neutron_rate} ± {neutron_rate_uncertainty}"
             )
 if neutron_rate is None:
-    neutron_rate = 1.3e09 * ureg.neutron * ureg.s**-1 # based on manufacturer test data for generator settings
+    neutron_rate = (
+        1.3e09 * ureg.neutron * ureg.s**-1
+    )  # based on manufacturer test data for generator settings
     neutron_rate_uncertainty = 4.9e06 * ureg.neutron * ureg.s**-1
-    print(
-        f"Using default neutron rate: {neutron_rate} ± {neutron_rate_uncertainty}"
-    )
+    print(f"Using default neutron rate: {neutron_rate} ± {neutron_rate_uncertainty}")
 
 neutron_rate_relative_uncertainty = (neutron_rate_uncertainty / neutron_rate).to(
     ureg.dimensionless
