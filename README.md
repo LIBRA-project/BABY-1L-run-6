@@ -10,7 +10,7 @@ This repository has the data for the run [BABY 1L Run #6].
 
 ### In Binder
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/LIBRA-project/INSERT-REPO-NAME/HEAD)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/LIBRA-project/BABY-1L-run-6/HEAD)
 
 ### Locally
 
@@ -26,7 +26,7 @@ conda env create -f environment.yml
 - [ ] [Link to Zenodo](https://zenodo.org/)
 - [x] Change environment name in [`environment.yml`](environment.yml)
 - [x] Change environment name in [CI workflows](.github/workflows)
-- [ ] Modify [binder](https://mybinder.org/) badge by inserting the repo name
+- [x] Modify [binder](https://mybinder.org/) badge by inserting the repo name
 - [x] Add general run data to [`data/general.json`](data/general.json)
 - [x] Add LSC data to [`data/tritium_detection`](data/tritium_detection)
 - [ ] Add neutron detection data to [`data/neutron_detection`](data/neutron_detection)
