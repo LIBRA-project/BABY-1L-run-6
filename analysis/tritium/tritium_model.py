@@ -288,13 +288,14 @@ T_consumed = neutron_rate * total_irradiation_time
 # we have some contribution from other sources (nGen, cyclotron, etc.)
 nb_samples_included_iv = len(IV_stream.samples)
 T_produced_IV = IV_stream.get_cumulative_activity("total")[nb_samples_included_iv - 1]
+T_produced_OV = OV_stream.get_cumulative_activity("total")[-1]
 
-measured_TBR = (T_produced_IV / quantity_to_activity(T_consumed)).to(
+measured_TBR = ((T_produced_IV + T_produced_OV) / quantity_to_activity(T_consumed)).to(
     ureg.particle * ureg.neutron**-1
 )
 
 # Run 1 transport coeff and measured TBR for overlay
-optimised_ratio = 0
+optimised_ratio = 1 / 12
 k_top = 2.5 * 12 * 1.45 * 8.9e-8 * ureg.m * ureg.s**-1
 k_wall = optimised_ratio * k_top
 
