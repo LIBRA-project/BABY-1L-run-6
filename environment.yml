@@ -17,7 +17,9 @@ dependencies:
   - papermill
   - pip
   - pip:
-      - libra-toolbox==0.8
+      - libra-toolbox>=0.9.1
       - openmc_data_downloader
       - matplotlib-label-lines
       - h-transport-materials
+      - pathsim
+      - git+https://github.com/festim-dev/PathView
