@@ -22,4 +22,5 @@ dependencies:
       - matplotlib-label-lines
       - h-transport-materials
       - pathsim
+      - pathview
       - git+https://github.com/festim-dev/PathView
