@@ -191,8 +191,8 @@ sampling_times = {
     "OV": sorted(OV_stream.relative_times_as_pint),
 }
 
-replacement_times_top = sampling_times["IV"]
-replacement_times_walls = sampling_times["OV"]
+replacement_times_top = ureg.Quantity.from_list(sampling_times["IV"])
+replacement_times_walls = ureg.Quantity.from_list(sampling_times["OV"])
 
 # read gas change time
 if general_data["cover_gas"]["switched_to"]["gas_switch_time"]:
@@ -287,7 +287,7 @@ T_consumed = neutron_rate * total_irradiation_time
 # to calculate the measured TBR we ignore the last samples for which
 # we have some contribution from other sources (nGen, cyclotron, etc.)
 nb_samples_included_iv = len(IV_stream.samples)
-T_produced_IV = IV_stream.get_cumulative_activity("total")[nb_samples_included_iv - 1]
+T_produced_IV = IV_stream.get_cumulative_activity("total")[-1]
 T_produced_OV = OV_stream.get_cumulative_activity("total")[-1]
 
 measured_TBR = ((T_produced_IV + T_produced_OV) / quantity_to_activity(T_consumed)).to(
