@@ -1,6 +1,6 @@
 # libra-run-template
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.INSERT-DOI.svg)](https://doi.org/10.5281/zenodo.INSERT-DOI)
+[![DOI](https://zenodo.org/badge/993952045.svg)](https://doi.org/10.5281/zenodo.23986554)
 
 This is a template repository for experimental runs of LIBRA.
 
